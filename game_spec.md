@@ -24,3 +24,4 @@ sub_hunt is a text based game where two players drive submarines and try to hunt
 * launch decoys to distract torpedoes.
 * handle sub heading and speed. Make possible turns dependent on it.
 * torpedo lock on.
+* torpedo's take more time if distance is great.

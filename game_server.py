@@ -27,6 +27,15 @@ class GameServer:
     def get_game_state(self):
         return self.game_state
 
+    def handle_command(self, player_id, command):
+        if command == "stat" and player_id in self.game_state:
+            player = next(player for player in self.players if player.id == player_id)
+            return {"command": "stat", "sub_location": list(player.sub_location)}
+        return {"error": "Unknown command"}
+
+    def send_response(self, connection, response):
+        connection.sendall(json.dumps(response).encode("utf-8") + b"\n")
+
 def main():
     server = GameServer()
     host = "localhost"
@@ -61,9 +70,16 @@ def main():
                         continue
 
                     message = json.loads(data.decode("utf-8").strip())
-                    player = Player.from_dict(message)
-                    server.add_player(player)
-                    print(f"Player joined: {player.name} ({player.id})")
+                    if "command" in message:
+                        response = server.handle_command(
+                            player_id=message["player_id"],
+                            command=message["command"],
+                        )
+                        server.send_response(connection, response)
+                    else:
+                        player = Player.from_dict(message)
+                        server.add_player(player)
+                        print(f"Player joined: {player.name} ({player.id})")
         except KeyboardInterrupt:
             print("Shutting down game server")
         finally:
