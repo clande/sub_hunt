@@ -29,7 +29,7 @@ class GameClient:
         return json.loads(self.connection.recv(4096).decode("utf-8"))
 
     def stat(self):
-        self.send_data({"command": "stat", "player_id": str(self.player.id)})
+        self.send_data({"command": "stat"})
         return self.receive_data()
 
     def disconnect(self):
@@ -48,6 +48,7 @@ def main():
             command = input("> ").strip().lower()
             if command == "stat":
                 response = client.stat()
+                print(f"Submarine position: {response}")
                 print(f"Submarine position: {tuple(response['sub_location'])}")
             elif command == "quit":
                 break

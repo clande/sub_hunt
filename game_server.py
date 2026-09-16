@@ -7,29 +7,28 @@ from player import Player
 
 class GameServer:
     def __init__(self):
-        self.players = []
+        self.players = {}
         self.game_state = {}
         self.connections = []
+        self.connection_players = {}
 
     def add_player(self, player):
-        self.players.append(player)
+        self.players[player.id] = player
         self.game_state[player.id] = {}
 
     def remove_player(self, player):
-        if player in self.players:
-            self.players.remove(player)
-            del self.game_state[player.id]
+        self.players.pop(player.id, None)
+        self.game_state.pop(player.id, None)
 
-    def update_game_state(self, player_id, new_state):
-        if player_id in self.game_state:
-            self.game_state[player_id] = new_state
+    def update_game_state(self, player: Player, new_state):
+        if player.id in self.game_state:
+            self.game_state[player.id] = new_state
 
     def get_game_state(self):
         return self.game_state
 
-    def handle_command(self, player_id, command):
-        if command == "stat" and player_id in self.game_state:
-            player = next(player for player in self.players if player.id == player_id)
+    def handle_command(self, player: Player, command):
+        if command == "stat" and player.id in self.game_state:
             return {"command": "stat", "sub_location": list(player.sub_location)}
         return {"error": "Unknown command"}
 
@@ -66,25 +65,36 @@ def main():
                     if not data:
                         print(f"Client disconnected from {connection.getpeername()}")
                         server.connections.remove(connection)
+                        player = server.connection_players.pop(connection, None)
+                        if player is not None:
+                            server.remove_player(player)
                         connection.close()
                         continue
 
                     message = json.loads(data.decode("utf-8").strip())
                     if "command" in message:
-                        response = server.handle_command(
-                            player_id=message["player_id"],
-                            command=message["command"],
-                        )
+                        player = server.connection_players.get(connection)
+                        if player is None:
+                            response = {"error": "Player is not connected"}
+                        else:
+                            response = server.handle_command(
+                                player=player,
+                                command=message["command"],
+                            )
                         server.send_response(connection, response)
                     else:
                         player = Player.from_dict(message)
                         server.add_player(player)
+                        server.connection_players[connection] = player
                         print(f"Player joined: {player.name} ({player.id})")
         except KeyboardInterrupt:
             print("Shutting down game server")
         finally:
             for connection in server.connections:
                 print(f"Disconnecting client {connection.getpeername()}")
+                player = server.connection_players.pop(connection, None)
+                if player is not None:
+                    server.remove_player(player)
                 connection.close()
 
 
