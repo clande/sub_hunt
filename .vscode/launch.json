@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug game server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.game_server",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug game client",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.game_client",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        }
+    ]
+}

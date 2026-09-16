@@ -2,7 +2,10 @@ import json
 import select
 import socket
 
-from .player import Player
+try:
+    from .player import Player
+except ImportError:
+    from player import Player
 
 
 class GameServer:
