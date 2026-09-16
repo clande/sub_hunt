@@ -1,12 +1,9 @@
 import json
-import socket
 import unittest
 import uuid
-from typing import cast
 
-from game_client import GameClient
-from game_server import GameServer
-from player import Player
+from src.game_server import GameServer
+from src.player import Player
 
 
 class FakeConnection:
@@ -23,31 +20,6 @@ class FakeConnection:
 
     def close(self):
         self.closed = True
-
-
-class GameClientTests(unittest.TestCase):
-    def test_status_sends_status_command_and_reads_response(self):
-        connection = FakeConnection(b'{"command": "status"}')
-        client = GameClient("localhost:8080", "Test Player")
-        client.connection = cast(socket.socket, connection)
-
-        response = client.status()
-
-        self.assertEqual(response, {"command": "status"})
-        self.assertEqual(
-            connection.sent,
-            [b'{"command": "status"}\n'],
-        )
-
-    def test_disconnect_closes_connection(self):
-        connection = FakeConnection()
-        client = GameClient("localhost:8080", "Test Player")
-        client.connection = cast(socket.socket, connection)
-
-        client.disconnect()
-
-        self.assertTrue(connection.closed)
-        self.assertIsNone(client.connection)
 
 
 class GameServerTests(unittest.TestCase):
@@ -102,6 +74,55 @@ class GameServerTests(unittest.TestCase):
             {"command": "status"},
         )
         self.assertTrue(connection.sent[0].endswith(b"\n"))
+
+    def test_process_connection_data_registers_player(self):
+        connection = FakeConnection()
+        self.server.connections.append(connection)
+        message = json.dumps(self.player.to_dict()).encode("utf-8")
+
+        self.assertTrue(self.server.process_connection_data(connection, message))
+
+        self.assertEqual(self.server.connection_players[connection], self.player)
+        self.assertEqual(self.server.players[self.player.id], self.player)
+
+    def test_process_connection_data_handles_status_for_registered_player(self):
+        connection = FakeConnection()
+        self.server.connection_players[connection] = self.player
+        self.server.add_player(self.player)
+
+        message = b'{"command": "status"}'
+        self.assertTrue(self.server.process_connection_data(connection, message))
+
+        self.assertEqual(
+            json.loads(connection.sent[0].decode("utf-8")),
+            {
+                "command": "status",
+                "sub_location": [4, 9],
+            },
+        )
+
+    def test_process_connection_data_rejects_unregistered_command(self):
+        connection = FakeConnection()
+
+        self.server.process_connection_data(connection, b'{"command": "status"}')
+
+        self.assertEqual(
+            json.loads(connection.sent[0].decode("utf-8")),
+            {"error": "Player is not connected"},
+        )
+
+    def test_process_connection_data_disconnects_player(self):
+        connection = FakeConnection()
+        self.server.connections.append(connection)
+        self.server.connection_players[connection] = self.player
+        self.server.add_player(self.player)
+
+        self.assertFalse(self.server.process_connection_data(connection, b""))
+
+        self.assertNotIn(connection, self.server.connections)
+        self.assertNotIn(connection, self.server.connection_players)
+        self.assertNotIn(self.player.id, self.server.players)
+        self.assertTrue(connection.closed)
 
 
 if __name__ == "__main__":

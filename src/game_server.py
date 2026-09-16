@@ -2,7 +2,7 @@ import json
 import select
 import socket
 
-from player import Player
+from .player import Player
 
 
 class GameServer:
@@ -35,6 +35,37 @@ class GameServer:
     def send_response(self, connection, response):
         connection.sendall(json.dumps(response).encode("utf-8") + b"\n")
 
+    def disconnect_connection(self, connection):
+        if connection in self.connections:
+            self.connections.remove(connection)
+        player = self.connection_players.pop(connection, None)
+        if player is not None:
+            self.remove_player(player)
+        connection.close()
+
+    def process_connection_data(self, connection, data):
+        if not data:
+            self.disconnect_connection(connection)
+            return False
+
+        message = json.loads(data.decode("utf-8").strip())
+        if "command" in message:
+            player = self.connection_players.get(connection)
+            if player is None:
+                response = {"error": "Player is not connected"}
+            else:
+                response = self.handle_command(
+                    player=player,
+                    command=message["command"],
+                )
+            self.send_response(connection, response)
+        else:
+            player = Player.from_dict(message)
+            self.add_player(player)
+            self.connection_players[connection] = player
+            print(f"Player joined: {player.name} ({player.id})")
+        return True
+
 def main():
     server = GameServer()
     host = "localhost"
@@ -64,38 +95,16 @@ def main():
                     data = connection.recv(4096)
                     if not data:
                         print(f"Client disconnected from {connection.getpeername()}")
-                        server.connections.remove(connection)
-                        player = server.connection_players.pop(connection, None)
-                        if player is not None:
-                            server.remove_player(player)
-                        connection.close()
+                        server.disconnect_connection(connection)
                         continue
 
-                    message = json.loads(data.decode("utf-8").strip())
-                    if "command" in message:
-                        player = server.connection_players.get(connection)
-                        if player is None:
-                            response = {"error": "Player is not connected"}
-                        else:
-                            response = server.handle_command(
-                                player=player,
-                                command=message["command"],
-                            )
-                        server.send_response(connection, response)
-                    else:
-                        player = Player.from_dict(message)
-                        server.add_player(player)
-                        server.connection_players[connection] = player
-                        print(f"Player joined: {player.name} ({player.id})")
+                    server.process_connection_data(connection, data)
         except KeyboardInterrupt:
             print("Shutting down game server")
         finally:
-            for connection in server.connections:
+            for connection in list(server.connections):
                 print(f"Disconnecting client {connection.getpeername()}")
-                player = server.connection_players.pop(connection, None)
-                if player is not None:
-                    server.remove_player(player)
-                connection.close()
+                server.disconnect_connection(connection)
 
 
 if __name__ == "__main__":

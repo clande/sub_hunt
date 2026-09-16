@@ -2,7 +2,7 @@ import json
 import socket
 import uuid
 
-from player import Player
+from .player import Player
 
 
 class GameClient:
@@ -37,6 +37,14 @@ class GameClient:
             self.connection.close()
             self.connection = None
 
+    def process_command(self, command):
+        command = command.strip().lower()
+        if command in ("stat", "st", "status"):
+            response = self.status()
+            print(f"Submarine position: {tuple(response['sub_location'])}")
+            return True
+        return command != "quit"
+
 def main():
     server_address = "localhost:8080"
     player_name = input("Enter your name: ").strip()
@@ -45,11 +53,7 @@ def main():
     try:
         client.connect()
         while True:
-            command = input("> ").strip().lower()
-            if command in ("stat", "st", "status"):
-                response = client.status()
-                print(f"Submarine position: {tuple(response['sub_location'])}")
-            elif command == "quit":
+            if not client.process_command(input("> ")):
                 break
     except KeyboardInterrupt:
         print("Disconnecting from game server")
