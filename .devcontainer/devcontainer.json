@@ -1,0 +1,20 @@
+{
+  "name": "Claude Code Isolated Sandbox",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code"
+      ]
+    }
+  },
+  "features": {},
+  // Mount your Claude Code persistent settings & auth inside a Docker volume 
+  // so you don't have to re-login to Anthropic every time you restart the container
+  "mounts": [
+    "source=claude-code-global-cache,target=/home/vscode/.claude,type=volume"
+  ],
+  "remoteUser": "vscode"
+}

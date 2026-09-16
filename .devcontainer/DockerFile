@@ -1,0 +1,13 @@
+FROM mcr.microsoft.com/devcontainers/python:1-3.12-bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update -o Acquire::AllowUnsecure=true -o Acquire::AllowInsecureRepositories=true && apt-get install -y \
+    curl \
+    git \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g @anthropic-ai/claude-code --force
+
+WORKDIR /workspace
