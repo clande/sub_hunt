@@ -28,8 +28,8 @@ class GameClient:
             raise ConnectionError("Client is not connected")
         return json.loads(self.connection.recv(4096).decode("utf-8"))
 
-    def stat(self):
-        self.send_data({"command": "stat"})
+    def status(self):
+        self.send_data({"command": "status"})
         return self.receive_data()
 
     def disconnect(self):
@@ -46,9 +46,8 @@ def main():
         client.connect()
         while True:
             command = input("> ").strip().lower()
-            if command == "stat":
-                response = client.stat()
-                print(f"Submarine position: {response}")
+            if command in ("stat", "st", "status"):
+                response = client.status()
                 print(f"Submarine position: {tuple(response['sub_location'])}")
             elif command == "quit":
                 break

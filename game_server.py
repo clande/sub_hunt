@@ -28,8 +28,8 @@ class GameServer:
         return self.game_state
 
     def handle_command(self, player: Player, command):
-        if command == "stat" and player.id in self.game_state:
-            return {"command": "stat", "sub_location": list(player.sub_location)}
+        if command == "status" and player.id in self.game_state:
+            return {"command": "status", "sub_location": list(player.sub_location)}
         return {"error": "Unknown command"}
 
     def send_response(self, connection, response):
